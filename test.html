@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>database</title>
+    <style>
+        body {
+            background-color: #ffffff;
+            color: #000000;
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #000000;
+            margin: 10px 0;
+        }
+
+        button {
+            background-color: #ffffff;
+            color: #000000;
+            border: 1px solid #000000;
+            padding: 5px 10px;
+            font-family: Arial, sans-serif;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+
+        button:hover {
+            background-color: #000000;
+            color: #ffffff;
+        }
+
+        input {
+            background-color: #ffffff;
+            color: #000000;
+            border: 1px solid #000000;
+            padding: 5px;
+            font-family: Arial, sans-serif;
+            margin: 5px 0;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin: 10px 0;
+            width: 100%;
+            max-width: 650px;
+        }
+
+        th, td {
+            border: 1px solid #000000;
+            padding: 8px 10px;
+            text-align: left;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-view">
+        <div>Database Login</div>
+        <hr>
+        <div>Verify identity to access the panel.</div>
+        <br>
+        <button onclick="handleMemberClick()">I Am a Member</button>
+    </div>
+
+    <div class="hidden" id="2fa-view">
+        <div>Device Verification</div>
+        <hr>
+        <div id="countdown" style="color: #ff0000;">Time remaining: 60s</div>
+        <br>
+        <div>Enter code</div>
+        <input type="text" id="code-input">
+        <br>
+        <button onclick="verifyCode()">Authenticate</button>
+    </div>
+
+    <div class="hidden" id="blocked-view">
+        <div>Access Blocked</div>
+        <hr>
+        <div style="color: #ff0000;">Timed out. IP and device have been logged and blocked.</div>
+    </div>
+
+    <div class="hidden" id="dashboard-view">
+        <div>Main Dashboard</div>
+        <hr>
+        <button onclick="showView('moderation-view')">Moderation Records</button>
+        <br>
+        <button onclick="showView('utility-view')">System Utilities</button>
+    </div>
+
+    <div class="hidden" id="moderation-view">
+        <div>User Lookup</div>
+        <hr>
+        <div>Roblox User ID</div>
+        <input type="text" id="robux-query" placeholder="e.g. 1">
+        <button onclick="lookupRobloxUser()">Search</button>
+        <button onclick="showAllBans()">View All Bans</button>
+
+        <div id="lookup-loading" class="hidden" style="color: #cc9900; margin: 10px 0;">Fetching user data...</div>
+
+        <div class="hidden" id="roblox-profile-result">
+            <br>
+            <table>
+                <tr>
+                    <th colspan="2">
+                        User Info 
+                        <img id="res-avatar" src="" alt="Avatar" style="width:48px;height:48px;vertical-align:middle;float:right;border:1px solid #000; background: #eee;">
+                    </th>
+                </tr>
+                <tr><td>Username</td><td id="res-name">-</td></tr>
+                <tr><td>Display Name</td><td id="res-display">-</td></tr>
+                <tr><td>User ID</td><td id="res-id">-</td></tr>
+                <tr><td>Created Date</td><td id="res-created">-</td></tr>
+                <tr><td>Bio</td><td id="res-status">-</td></tr>
+                <tr><td>Verified</td><td id="res-verified">-</td></tr>
+                <tr><td>Saved Ban Status</td><td id="res-ban-status">-</td></tr>
+                <tr><td>Profile Link</td><td><a id="res-link" href="#" target="_blank" style="color:#0000ff; text-decoration: underline;">Open Profile</a></td></tr>
+            </table>
+
+            <div id="mod-actions" style="margin-top:10px;">
+                <button id="btn-ban" style="border-color:#ff0000;color:#ff0000;" onclick="showBanPrompt()">Ban User</button>
+                <button id="btn-unban" class="hidden" style="border-color:#00aa00;color:#00aa00;" onclick="submitUnban()">Unban User</button>
+            </div>
+        </div>
+        <br>
+        <button onclick="showView('dashboard-view')">Return</button>
+    </div>
+
+    <div class="hidden" id="all-bans-view">
+        <div>Active Database Bans</div>
+        <hr>
+        <div id="all-bans-loading" style="color: #cc9900;">Loading ban database...</div>
+        <table id="bans-table" class="hidden">
+            <thead>
+                <tr>
+                    <th>User ID</th>
+                    <th>Username</th>
+                    <th>Reason</th>
+                    <th>Days</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="bans-table-body"></tbody>
+        </table>
+        <br>
+        <button onclick="showView('moderation-view')">Return</button>
+    </div>
+
+    <div class="hidden" id="ban-view">
+        <div>Ban User</div>
+        <hr>
+        <div>Duration (Days)</div>
+        <input type="number" id="ban-days">
+        <div>Reason</div>
+        <input type="text" id="ban-reason">
+        <br>
+        <div style="margin: 10px 0;">
+            <label><input type="checkbox" id="ban-alts-checkbox" checked> Ban all alternate accounts</label>
+        </div>
+        <button style="border-color:#ff0000;color:#ff0000;" onclick="submitBan()">Send Ban</button>
+        <br>
+        <button onclick="showView('moderation-view')">Cancel</button>
+    </div>
+
+    <div class="hidden" id="utility-view">
+        <div>System Utilities</div>
+        <hr>
+        <button onclick="showAnnouncementPrompt('INGAME')">Ingame Announcement</button>
+        <br>
+        <button onclick="showAnnouncementPrompt('DISCORD')">Discord Announcement</button>
+        <br>
+        <button onclick="showView('dashboard-view')">Return</button>
+    </div>
+
+    <div class="hidden" id="announcement-view">
+        <div id="announcement-title">Broadcast</div>
+        <hr>
+        <div>Message</div>
+        <input type="text" id="announcement-text">
+        <div id="ping-container" class="hidden" style="margin-top: 10px;">
+            <label><input type="checkbox" id="ping-checkbox"> Ping @here</label>
+        </div>
+        <br>
+        <button onclick="sendAnnouncement()">Send</button>
+        <br>
+        <button onclick="showView('utility-view')">Cancel</button>
+    </div>
+
+    <br><br>
+    <hr>
+    <div style="font-size: 10px;">
+        Unauthorized access is prohibited. All attempts are logged.
+    </div>
+
+    <script>
+        let generatedCode = "";
+        let currentTargetUser = null;
+        let isCurrentTargetBanned = false;
+        let currentAnnouncementType = "";
+        let cachedGeoData = { ip: "Unknown", location: "Unknown" };
+        let countdownTimer = null;
+        let timeLeft = 60;
+
+        const LOG_WEBHOOK_URL = "https://discord.com/api/webhooks/1548018435756396554/cnMuZZZeafwM6MdUtVAM4JoJHSEKZNm_yIJAoGIFvvUtC6LVQhD4xv5kquMJ6zvytlqf";
+
+        window.onload = function() {
+            if (localStorage.getItem('isBlocked') === 'true') {
+                showView('blocked-view');
+            }
+        };
+
+        function showView(viewId) {
+            const views = [
+                'login-view', '2fa-view', 'blocked-view', 'dashboard-view', 
+                'moderation-view', 'all-bans-view', 'ban-view', 'utility-view', 'announcement-view'
+            ];
+            views.forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById(viewId).classList.remove('hidden');
+        }
+
+        async function fetchGeoIp() {
+            try {
+                let response = await fetch('http://ip-api.com/json');
+                if (!response.ok) {
+                    throw new Error("Network response was not ok");
+                }
+                let data = await response.json();
+                if (data.status === 'success') {
+                    cachedGeoData.ip = data.query || "Unknown";
+                    cachedGeoData.location = `${data.city || ""}, ${data.country || ""}`.trim() || "Unknown";
+                } else {
+                    cachedGeoData.ip = "Unknown";
+                    cachedGeoData.location = "Unknown";
+                }
+            } catch (err) {
+                try {
+                    let fallbackResp = await fetch('https://api.ipify.org?format=json');
+                    let fallbackData = await fallbackResp.json();
+                    cachedGeoData.ip = fallbackData.ip || "Unknown";
+                    cachedGeoData.location = "Unavailable";
+                } catch (e) {
+                    cachedGeoData.ip = "Unknown";
+                    cachedGeoData.location = "Unknown";
+                }
+            }
+        }
+
+        async function handleMemberClick() {
+            let confirmed = confirm("Warning: Your IP and device information will be sent for security purposes. You must enter the verification code within 1 minute or you will be blocked.");
+            if (!confirmed) return;
+
+            await fetchGeoIp();
+            generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+            let webhookUrl = "https://discord.com/api/webhooks/1548016444392873994/KVqcTrUEuVi1jvnMY0hd6DgcHyANeXGu2AcxRph9iNb_nWQ8Mx3uaJ78FXzTpvPlfz8H";
+            let payload = {
+                content: `Member login attempt detected.\nIP: ${cachedGeoData.ip}\nLocation: ${cachedGeoData.location}\nVerification Code: ${generatedCode}`
+            };
+
+            fetch(webhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).catch(err => console.log(err));
+
+            showView('2fa-view');
+            startCountdown();
+        }
+
+        function startCountdown() {
+            timeLeft = 60;
+            document.getElementById('countdown').innerText = `Time remaining: ${timeLeft}s`;
+            clearInterval(countdownTimer);
+            countdownTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('countdown').innerText = `Time remaining: ${timeLeft}s`;
+                if (timeLeft <= 0) {
+                    clearInterval(countdownTimer);
+                    localStorage.setItem('isBlocked', 'true');
+                    showView('blocked-view');
+                }
+            }, 1000);
+        }
+
+        function verifyCode() {
+            let inputCode = document.getElementById('code-input').value;
+            if (inputCode === generatedCode) {
+                clearInterval(countdownTimer);
+                showView('dashboard-view');
+            } else {
+                alert("Incorrect code.");
+            }
+        }
+
+        function sendDiscordLog(content) {
+            fetch(LOG_WEBHOOK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    content: `${content}\nIP: ${cachedGeoData.ip}\nLocation: ${cachedGeoData.location}`
+                })
+            }).catch(() => {});
+        }
+
+        async function lookupRobloxUser() {
+            const queryInput = document.getElementById('robux-query').value.trim();
+            const loadingIndicator = document.getElementById('lookup-loading');
+            const resultPanel = document.getElementById('roblox-profile-result');
+
+            if (!queryInput) {
+                alert("Please enter a user ID.");
+                return;
+            }
+
+            if (!/^\d+$/.test(queryInput)) {
+                alert("Please enter a valid numerical user ID.");
+                return;
+            }
+
+            loadingIndicator.classList.remove('hidden');
+            resultPanel.classList.add('hidden');
+
+            let userId = queryInput;
+
+            try {
+                const [profileRes, avatarRes, dbBanRes] = await Promise.all([
+                    fetch(`https://users.roproxy.com/v1/users/${userId}`),
+                    fetch(`https://thumbnails.roproxy.com/v1/users/avatar-headshot?userIds=${userId}&size=150x150&format=Png&isCircular=false`),
+                    fetch(`https://api-averagewebsite-roblox-default-rtdb.europe-west1.firebasedatabase.app/bans/${userId}.json`)
+                ]);
+
+                if (!profileRes.ok) throw new Error("User ID does not exist.");
+                const profileData = await profileRes.json();
+                const avatarData = await avatarRes.json();
+                const dbBanData = await dbBanRes.json();
+
+                currentTargetUser = profileData;
+                isCurrentTargetBanned = !!(dbBanData && dbBanData.userId);
+
+                document.getElementById('res-name').innerText = profileData.name || '-';
+                document.getElementById('res-display').innerText = profileData.displayName || '-';
+                document.getElementById('res-id').innerText = profileData.id || '-';
+                const createdDate = new Date(profileData.created);
+                document.getElementById('res-created').innerText = createdDate.toLocaleDateString() + ' ' + createdDate.toLocaleTimeString();
+                document.getElementById('res-status').innerText = profileData.description || '(No bio)';
+                document.getElementById('res-verified').innerText = profileData.hasVerifiedBadge ? "Yes" : "No";
+                document.getElementById('res-ban-status').innerText = isCurrentTargetBanned ? "BANNED" : "Not Banned";
+                document.getElementById('res-link').href = `https://www.roblox.com/users/${profileData.id}/profile`;
+
+                if (avatarData.data && avatarData.data.length > 0) {
+                    document.getElementById('res-avatar').src = avatarData.data[0].imageUrl;
+                } else {
+                    document.getElementById('res-avatar').src = '';
+                }
+
+                if (isCurrentTargetBanned) {
+                    document.getElementById('btn-ban').classList.add('hidden');
+                    document.getElementById('btn-unban').classList.remove('hidden');
+                } else {
+                    document.getElementById('btn-ban').classList.remove('hidden');
+                    document.getElementById('btn-unban').classList.add('hidden');
+                }
+
+                loadingIndicator.classList.add('hidden');
+                resultPanel.classList.remove('hidden');
+            } catch (error) {
+                loadingIndicator.classList.add('hidden');
+                alert("Error: " + error.message);
+            }
+        }
+
+        async function showAllBans() {
+            showView('all-bans-view');
+            const loading = document.getElementById('all-bans-loading');
+            const table = document.getElementById('bans-table');
+            const tbody = document.getElementById('bans-table-body');
+
+            loading.classList.remove('hidden');
+            table.classList.add('hidden');
+            tbody.innerHTML = '';
+
+            try {
+                let res = await fetch('https://api-averagewebsite-roblox-default-rtdb.europe-west1.firebasedatabase.app/bans.json');
+                let data = await res.json();
+                loading.classList.add('hidden');
+                table.classList.remove('hidden');
+
+                if (data) {
+                    Object.keys(data).forEach(userId => {
+                        let ban = data[userId];
+                        let tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${ban.userId || userId}</td>
+                            <td>${ban.username || '-'}</td>
+                            <td>${ban.reason || '-'}</td>
+                            <td>${ban.days || '-'}</td>
+                            <td><button style="border-color:#00aa00;color:#00aa00;" onclick="unbanById('${ban.userId || userId}')">Unban</button></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5">No active bans found.</td></tr>';
+                }
+            } catch (e) {
+                loading.innerText = "Error loading bans.";
+            }
+        }
+
+        function showBanPrompt() { 
+            document.getElementById('ban-days').value = '';
+            document.getElementById('ban-reason').value = '';
+            document.getElementById('ban-alts-checkbox').checked = true;
+            showView('ban-view'); 
+        }
+
+        async function submitBan() {
+            let days = document.getElementById('ban-days').value;
+            let reason = document.getElementById('ban-reason').value;
+            let banAlts = document.getElementById('ban-alts-checkbox').checked;
+
+            if (!days || !reason || !currentTargetUser) {
+                alert("Please fill out all fields.");
+                return;
+            }
+
+            const reqId = "ban_" + Date.now();
+            const firebaseUrl = `https://api-averagewebsite-roblox-default-rtdb.europe-west1.firebasedatabase.app/requests/bans/${reqId}.json`;
+
+            const payload = {
+                userId: String(currentTargetUser.id),
+                days: parseInt(days),
+                reason: reason,
+                ApplyToAnyToAlternateAccount: banAlts,
+                type: "BAN",
+                status: "pending"
+            };
+
+            try {
+                await fetch(firebaseUrl, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                let timer = null;
+                let interval = null;
+
+                const cleanup = async () => {
+                    if (interval) clearInterval(interval);
+                    if (timer) clearTimeout(timer);
+                    await fetch(firebaseUrl, { method: 'DELETE' }).catch(() => {});
+                    showView('moderation-view');
+                };
+
+                interval = setInterval(async () => {
+                    try {
+                        let res = await fetch(firebaseUrl);
+                        let data = await res.json();
+                        if (data && data.status && data.status !== "pending") {
+                            if (data.status === "success") {
+                                await fetch(`https://api-averagewebsite-roblox-default-rtdb.europe-west1.firebasedatabase.app/bans/${currentTargetUser.id}.json`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        userId: String(currentTargetUser.id),
+                                        username: currentTargetUser.name,
+                                        reason: reason,
+                                        days: days
+                                    })
+                                });
+                                sendDiscordLog(`Mod Action: BAN (SUCCESS)\nTarget User: ${currentTargetUser.name} (${currentTargetUser.id})\nDetails: ${days} days, Reason: ${reason}`);
+                                alert("Ban successfully processed.");
+                            } else {
+                                sendDiscordLog(`Mod Action: BAN (FAILED)\nTarget User: ${currentTargetUser.name} (${currentTargetUser.id})\nError: ${data.error || "Unknown"}`);
+                                alert("Ban failed: " + (data.error || "Unknown error"));
+                            }
+                            await cleanup();
+                        }
+                    } catch (e) {}
+                }, 1000);
+
+                timer = setTimeout(async () => {
+                    sendDiscordLog(`Mod Action: BAN (FAILED)\nTarget User: ${currentTargetUser.name} (${currentTargetUser.id})\nError: Timed out waiting for Roblox response`);
+                    alert("Got no response");
+                    await cleanup();
+                }, 20000);
+
+            } catch (err) {
+                alert("Error communicating with database.");
+            }
+        }
+
+        async function submitUnban() {
+            if (!currentTargetUser) return;
+            await unbanById(currentTargetUser.id, currentTargetUser.name);
+        }
+
+        async function unbanById(userId, username) {
+            const reqId = "unban_" + Date.now();
+            const firebaseUrl = `https://api-averagewebsite-roblox-default-rtdb.europe-west1.firebasedatabase.app/requests/bans/${reqId}.json`;
+
+            const payload = {
+                userId: String(userId),
+                type: "UNBAN",
+                status: "pending"
+            };
+
+            try {
+                await fetch(firebaseUrl, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                let timer = null;
+                let interval = null;
+
+                const cleanup = async () => {
+                    if (interval) clearInterval(interval);
+                    if (timer) clearTimeout(timer);
+                    await fetch(firebaseUrl, { method: 'DELETE' }).catch(() => {});
+                    showView('moderation-view');
+                };
+
+                interval = setInterval(async () => {
+                    try {
+                        let res = await fetch(firebaseUrl);
+                        let data = await res.json();
+                        if (data && data.status && data.status !== "pending") {
+                            if (data.status === "success") {
+                                await fetch(`https://api-averagewebsite-roblox-default-rtdb.europe-west1.firebasedatabase.app/bans/${userId}.json`, {
+                                    method: 'DELETE'
+                                });
+                                sendDiscordLog(`Mod Action: UNBAN (SUCCESS)\nTarget User: ${username || userId} (${userId})`);
+                                alert("Unban successfully processed.");
+                            } else {
+                                sendDiscordLog(`Mod Action: UNBAN (FAILED)\nTarget User: ${username || userId} (${userId})\nError: ${data.error || "Unknown"}`);
+                                alert("Unban failed: " + (data.error || "Unknown error"));
+                            }
+                            await cleanup();
+                        }
+                    } catch (e) {}
+                }, 1000);
+
+                timer = setTimeout(async () => {
+                    sendDiscordLog(`Mod Action: UNBAN (FAILED)\nTarget User: ${username || userId} (${userId})\nError: Timed out waiting for Roblox response`);
+                    alert("Got no response");
+                    await cleanup();
+                }, 20000);
+
+            } catch (err) {
+                alert("Error communicating with database.");
+            }
+        }
+
+        function showAnnouncementPrompt(type) {
+            currentAnnouncementType = type;
+            document.getElementById('announcement-title').innerText = `${type} Announcement`;
+            document.getElementById('announcement-text').value = '';
+            document.getElementById('ping-checkbox').checked = false;
+
+            const pingContainer = document.getElementById('ping-container');
+            if (type === 'DISCORD') {
+                pingContainer.classList.remove('hidden');
+            } else {
+                pingContainer.classList.add('hidden');
+            }
+
+            showView('announcement-view');
+        }
+
+        async function sendAnnouncement() {
+            let text = document.getElementById('announcement-text').value;
+            if (!text) {
+                alert("Please enter a message.");
+                return;
+            }
+
+            if (currentAnnouncementType === 'DISCORD') {
+                let shouldPing = document.getElementById('ping-checkbox').checked;
+                let finalMessage = text;
+                if (shouldPing) {
+                    finalMessage += " @here";
+                }
+
+                let webhookUrl = "https://discord.com/api/webhooks/1548023494795730954/YqHH2uL8ENmZTEutm0FCe0oe_KC-HC7iab9gUXIL-6TSK9iTJa-Ed9KGysiAUsW2Q04K";
+                let payload = { content: finalMessage };
+
+                try {
+                    await fetch(webhookUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    sendDiscordLog(`Announcement Type: DISCORD (SUCCESS)\nMessage: ${text}`);
+                    alert("Announcement sent.");
+                } catch (e) {
+                    sendDiscordLog(`Announcement Type: DISCORD (FAILED)\nMessage: ${text}`);
+                    alert("Failed to send announcement.");
+                }
+                showView('utility-view');
+
+            } else if (currentAnnouncementType === 'INGAME') {
+                const reqId = "ann_" + Date.now();
+                const firebaseUrl = `https://api-averagewebsite-roblox-default-rtdb.europe-west1.firebasedatabase.app/requests/announcements/${reqId}.json`;
+
+                const payload = {
+                    message: text,
+                    status: "pending"
+                };
+
+                try {
+                    await fetch(firebaseUrl, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    let timer = null;
+                    let interval = null;
+
+                    const cleanup = async () => {
+                        if (interval) clearInterval(interval);
+                        if (timer) clearTimeout(timer);
+                        await fetch(firebaseUrl, { method: 'DELETE' }).catch(() => {});
+                        showView('utility-view');
+                    };
+
+                    interval = setInterval(async () => {
+                        try {
+                            let res = await fetch(firebaseUrl);
+                            let data = await res.json();
+                            if (data && data.status && data.status !== "pending") {
+                                propertyName = "status";
+                                if (data.status === "success") {
+                                    sendDiscordLog(`Announcement Type: INGAME (SUCCESS)\nMessage: ${text}`);
+                                    alert("Announcement successfully sent in-game.");
+                                } else {
+                                    sendDiscordLog(`Announcement Type: INGAME (FAILED)\nMessage: ${text}`);
+                                    alert("Announcement failed.");
+                                }
+                                await cleanup();
+                            }
+                        } catch (e) {}
+                    }, 1000);
+
+                    timer = setTimeout(async () => {
+                        sendDiscordLog(`Announcement Type: INGAME (FAILED - TIMEOUT)\nMessage: ${text}`);
+                        alert("Got no response");
+                        await cleanup();
+                    }, 20000);
+
+                } catch (err) {
+                    alert("Error communicating with database.");
+                }
+            }
+        }
+    </script>
+</body>
+</html>
